@@ -1,14 +1,17 @@
 package me.diman.fballwars.game;
 
+import java.util.Random;
 import java.util.Set;
 
 import me.diman.fballwars.game.map.FBallWarsMap;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.projectile.FireballEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.potion.Potions;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -72,7 +75,7 @@ public class FBallWarsActive {
     private ActionResult itemUse(ServerPlayerEntity player, Hand hand) {
         if(player.isHolding(Items.FIRE_CHARGE)) {
             Vec3d vec3d = player.getRotationVec(1.0F);
-            FireballEntity fireballEntity = new FireballEntity(world, player, vec3d, 0); 
+            FireballEntity fireballEntity = new FireballEntity(world, player, vec3d, 1); 
             fireballEntity.setVelocity(player, player.getPitch(), player.getYaw(), 0.0F, 1.5F, 1.0F);
             fireballEntity.setPosition(player.getX() /*+ vec3d.x * 4*/, player.getBodyY(0.5) /*+ 0.5*/, player.getZ());
             world.spawnEntity(fireballEntity);
@@ -90,6 +93,8 @@ public class FBallWarsActive {
             preparePlayer(spe);
             var target = this.map.getRedSpawn(0).center();
             spe.teleport(target.x, target.y, target.z, false);
+            spe.giveItemStack(new ItemStack(Items.STONE_SWORD));
+            spe.giveItemStack(new ItemStack(Items.WHITE_WOOL, 8));
         }
 
         for(ServerPlayerEntity spe : this.teams.blueTeam.players) {
@@ -97,6 +102,8 @@ public class FBallWarsActive {
             preparePlayer(spe);
             var target = this.map.getBlueSpawn(0).center();
             spe.teleport(target.x, target.y, target.z, false);
+            spe.giveItemStack(new ItemStack(Items.STONE_SWORD));
+            spe.giveItemStack(new ItemStack(Items.WHITE_WOOL, 8));
         }
     }
 
@@ -139,14 +146,25 @@ public class FBallWarsActive {
         var whoWinned = this.whoWinned();
         if(whoWinned != WhoWinned.NO_ONE) {
             this.closeTime = time + 20 * 5;
+            String winTeamString = whoWinned() == WhoWinned.RED_TEAM ? "Red team won! :D" : "Blue team won! :D";
+            for(ServerPlayerEntity spe : this.world.getPlayers()) {
+                spe.sendMessage(Text.of(winTeamString));
+            }
         }
 
         ticks += 1;
         
         if(ticks % 100 == 0) {
             this.gameSpace.getPlayers().forEach(player -> {
+                var chance = new Random().nextInt(0, 51);
+                if(chance == 1) {
+                    player.giveItemStack(new ItemStack(Items.ENDER_PEARL));
+                } else if (chance == 2) {
+                    player.giveItemStack(PotionContentsComponent.createStack(Items.LINGERING_POTION, Potions.HEALING));
+                } else {
+                    player.giveItemStack(new ItemStack(Items.FIRE_CHARGE)); 
+                }
                 player.giveItemStack(new ItemStack(Items.WHITE_WOOL));
-                player.giveItemStack(new ItemStack(Items.FIRE_CHARGE));
             });
         }
     }
@@ -158,16 +176,14 @@ public class FBallWarsActive {
     }
 
     private WhoWinned whoWinned() {
-        return WhoWinned.NO_ONE;
-        /* 
-        if(this.teams.redTeam.players.stream().filter(a -> a.isSpectator()).toList().size() == 0) {
+        if(this.teams.redTeam.players.stream().filter(a -> !a.isSpectator()).toList().size() == 0) {
             return WhoWinned.BLUE_TEAM;
         }
 
-        if(this.teams.blueTeam.players.stream().filter(a -> a.isSpectator()).toList().size() == 0) {
+        if(this.teams.blueTeam.players.stream().filter(a -> !a.isSpectator()).toList().size() == 0) {
             return WhoWinned.RED_TEAM;
         }
 
-        return WhoWinned.NO_ONE;*/
+        return WhoWinned.NO_ONE;
     }
 }

@@ -5,7 +5,7 @@
         "spawn_angle": 0
     },
     "players": {
-        "min": 1,
+        "min": 2,
         "max": 8
     }
 }
